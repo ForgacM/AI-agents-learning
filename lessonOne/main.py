@@ -1,7 +1,8 @@
 import asyncio
-import python_weather
 import json
 from typing import List, Dict, Any
+
+import python_weather
 from openai import OpenAI
 
 # Initialize OpenAI client
@@ -9,9 +10,6 @@ client = OpenAI(
     base_url = "http://localhost:11434/v1/",  # Ollama’s local endpoint
     api_key = "ollama",  # required by the library but ignored by Ollama locally
 )
-
-
-
 
 # Function Implementations
 async def get_weather_async(city: str):
