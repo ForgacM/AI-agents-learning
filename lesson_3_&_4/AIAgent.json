@@ -1,0 +1,149 @@
+{
+  "name": "AIAgent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a8d4793d-9e01-43a1-99e2-89474ae57c11",
+      "name": "When chat message received",
+      "webhookId": "1735708f-2006-4452-aa8e-0b62d4c546ef"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a metrology AI assistant. Always check data in MCP and return structured raw data in JSON format only.\nRules:\n1. Check DB first \n2. Check MCP\n3. Store data into DB if not exist"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "338127cc-f3e6-4e5d-9714-4d10dba5de4b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:4b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "ec6aaccd-5339-4248-a7c5-bb9a94cd5c15",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "cNsmeH6ifC9OkLpT",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://192.168.1.200:8002/mcp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        224
+      ],
+      "id": "e835925a-8a7d-4dd7-8575-fc87975d7bd0",
+      "name": "MCP Client"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Execute a SQL query in MySQL. Table weather_data. data are be stored with latitude and longitude. Return all data",
+        "operation": "executeQuery",
+        "query": "{{ $fromAI('query') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        368,
+        208
+      ],
+      "id": "1d37c287-9fe1-491b-ab51-1e39dec4630b",
+      "name": "Execute a SQL query in MySQL",
+      "credentials": {
+        "mySql": {
+          "id": "XUg53YH6qTq58map",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query in MySQL": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "37acdee0-e01c-4f72-8deb-4ac2118511ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ff82459a9e681f8faff5f5a4a18ac36a934106e96cb3223af31af968a0aa1c1"
+  },
+  "id": "bvtNK7aOFLjuCEoh",
+  "tags": []
+}

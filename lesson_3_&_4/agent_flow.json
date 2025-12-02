@@ -1,0 +1,303 @@
+{
+  "name": "Agents",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -688,
+        -16
+      ],
+      "id": "90c50a82-f46e-4649-b016-f5738c6fb193",
+      "name": "When chat message received",
+      "webhookId": "e42f3ceb-5adf-4023-86d5-fed01e2c88ae",
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://192.168.1.200:8002/mcp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        128,
+        -112
+      ],
+      "id": "0b51cd88-c861-455c-b33b-fed90427cd30",
+      "name": "MCP Client"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Stored information about weather data are stored based on longitude and latitude. Always look for data for specific coordinates",
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "weather_data",
+          "mode": "list",
+          "cachedResultName": "weather_data"
+        },
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+        "where": {
+          "values": [
+            {
+              "column": "latitude",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}"
+            },
+            {
+              "column": "longitude",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values1_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.5,
+      "position": [
+        -352,
+        192
+      ],
+      "id": "073ed1cb-b15c-4c1f-a098-fad47b41a364",
+      "name": "Select rows from a table in MySQL",
+      "credentials": {
+        "mySql": {
+          "id": "XUg53YH6qTq58map",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "qwen3:4b",
+          "mode": "list",
+          "cachedResultName": "qwen3:4b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.content }}"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are prettifier. You will receive data and you need to create nice output for user. All data will be about weather"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        576,
+        0
+      ],
+      "id": "8518d562-a419-40ff-9100-e75645e1f45c",
+      "name": "Message a model2",
+      "credentials": {
+        "ollamaApi": {
+          "id": "cNsmeH6ifC9OkLpT",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4008a846-7814-446c-9009-e548bbadedbf",
+              "leftValue": "={{ $json.content.parseJson().data}}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        -16
+      ],
+      "id": "d6fddef1-9055-4da8-8f1c-0faa970d8561",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "qwen3:4b",
+          "mode": "list",
+          "cachedResultName": "qwen3:4b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.content.parseJson().inputMessage }}"
+            }
+          ]
+        },
+        "options": {
+          "system": "=You are a metrology AI assistant which have tool to get weather data for any datetime.\nALLOWED OUTPUT MODES:\n1. A tool call (when needed).\n2. A JSON object in the exact structure below (when sending final data).\n\nWhen sending final output (not a tool call), ALWAYS use this JSON structure:\n\n{\n  \"data_source\": \"MCP\",\n  \"inputMessage\": \"{{ $json.content.parseJson().inputMessage }}\",\n  \"data\": [ ]\n}\n\nRULES:\n- You may call tools when required by the user request.\n- Only your FINAL non-tool response must follow the JSON structure.\n- Do NOT include explanations, comments, markdown, or text outside the JSON in final output.\n- \"inputMessage\" must reflect the exact user input.\n- \"data\" must contain the stored data exactly as received.",
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        112,
+        -288
+      ],
+      "id": "3245fa10-c8b0-45f9-8836-c593d0e959ee",
+      "name": "Message a model3",
+      "credentials": {
+        "ollamaApi": {
+          "id": "cNsmeH6ifC9OkLpT",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "qwen3:4b",
+          "mode": "list",
+          "cachedResultName": "qwen3:4b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.chatInput }}"
+            }
+          ]
+        },
+        "options": {
+          "system": "=You are a metrology AI assistant used inside an n8n workflow. Always check data in DB and return structured raw data in JSON format only\nALLOWED OUTPUT MODES:\n1. A tool call (when needed).\n2. A JSON object in the exact structure below (when sending final data).\n\nWhen sending final output (not a tool call), ALWAYS use this JSON structure:\n\n{\n  \"data_source\": \"DB\",\n  \"inputMessage\": \"{{ $json.chatInput }}\",\n  \"data\": {}\n}\n\nRULES:\n- You may call tools when required by the user request.\n- Only your FINAL non-tool response must follow the JSON structure.\n- Do NOT include explanations, comments, markdown, or text outside the JSON in final output.\n- \"inputMessage\" must reflect the exact user input.\n- \"data\" must contain the stored data exactly as received",
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -16
+      ],
+      "id": "b856f756-70a6-498d-abbd-c6c116b758f2",
+      "name": "Message a model",
+      "alwaysOutputData": true,
+      "credentials": {
+        "ollamaApi": {
+          "id": "cNsmeH6ifC9OkLpT",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table in MySQL": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Message a model3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model3": {
+      "main": [
+        [
+          {
+            "node": "Message a model2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5a05637f-212e-45f6-b460-b93c59e8e938",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ff82459a9e681f8faff5f5a4a18ac36a934106e96cb3223af31af968a0aa1c1"
+  },
+  "id": "u3My4aiR4Ifz3ZDs",
+  "tags": []
+}
