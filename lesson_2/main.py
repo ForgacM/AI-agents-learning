@@ -14,59 +14,54 @@ client = OpenAI(
 
 server_parameter = StdioServerParameters(command="python", args=["./server.py"])
 
+_EMPTY_SCHEMA = {"type": "object", "properties": {}}
+
+def _to_json_schema(schema) -> dict:
+    """Convert various schema formats to a JSON schema dict."""
+    if schema is None:
+        return _EMPTY_SCHEMA
+    if hasattr(schema, "model_dump"):
+        return schema.model_dump()
+    if hasattr(schema, "dict"):
+        return schema.dict()
+    if isinstance(schema, str):
+        try:
+            return json.loads(schema)
+        except (json.JSONDecodeError, TypeError):
+            return _EMPTY_SCHEMA
+    return schema
+
+def _extract_tool_info(tool) -> tuple[str | None, str, dict]:
+    """Extract name, description, and parameters from a tool (dict or object)."""
+    if isinstance(tool, dict):
+        return (
+            tool.get("name"),
+            tool.get("description", ""),
+            _to_json_schema(tool.get("input_schema")),
+        )
+    return (
+        getattr(tool, "name", None),
+        getattr(tool, "description", "") or "",
+        _to_json_schema(getattr(tool, "input_schema", None) or getattr(tool, "inputSchema", None)),
+    )
+
 def mcp_tools_to_openai(mcp_tools_response) -> list[dict]:
-    """
-    Convert MCP ToolsResponse (list of Tool objects) to OpenAI 'function' tools.
-    Works with dicts too, and unwraps Pydantic / JSONSchema objects.
-    """
-    # Accept either response with .tools or a plain list
-    tools_src = getattr(mcp_tools_response, "tools", mcp_tools_response)
+    """Convert MCP ToolsResponse to OpenAI function tools format."""
+    tools_src = getattr(mcp_tools_response, "tools", mcp_tools_response) or []
 
-    def to_json_schema(schema):
-        if schema is None:
-            return {"type": "object", "properties": {}}
-        # Pydantic v2 BaseModel
-        if hasattr(schema, "model_dump"):
-            return schema.model_dump()
-        # Pydantic v1 BaseModel
-        if hasattr(schema, "dict"):
-            return schema.dict()
-        # JSON string
-        if isinstance(schema, str):
-            try:
-                return json.loads(schema)
-            except Exception:
-                return {"type": "object", "properties": {}}
-        # Assume already a dict-like JSON schema
-        return schema
-
-    out = []
-    for t in tools_src or []:
-        if isinstance(t, dict):
-            name = t.get("name")
-            desc = t.get("description", "")
-            params = to_json_schema(t.get("input_schema"))
-        else:
-            # Pydantic Tool object (FastMCP/MCP)
-            name = getattr(t, "name", None)
-            desc = getattr(t, "description", "") or ""
-            # input_schema may be named input_schema or inputSchema depending on lib
-            schema = getattr(t, "input_schema", None) or getattr(t, "inputSchema", None)
-            params = to_json_schema(schema)
-
-        if not name:
-            # skip malformed tool
-            continue
-
-        out.append({
-            "type": "function",
-            "function": {
-                "name": name,
-                "description": desc,
-                "parameters": params or {"type": "object", "properties": {}},
-            },
-        })
-    return out
+    result = []
+    for tool in tools_src:
+        name, desc, params = _extract_tool_info(tool)
+        if name:
+            result.append({
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": desc,
+                    "parameters": params or _EMPTY_SCHEMA,
+                },
+            })
+    return result
 
 def mcp_tool_response_to_text(resp) -> str:
     """Pick structuredContent if present; else join text parts."""
