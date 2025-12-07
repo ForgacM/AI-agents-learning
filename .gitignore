@@ -7,5 +7,5 @@
 .venv
 /*/uv.lock
 /*/.env
-/*/*/.env
+**/.env
 /*/.venv/
