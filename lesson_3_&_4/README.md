@@ -9,6 +9,7 @@ No code platform n8n
 - Hard to debug tool calls input parameters
 - lot of calls are hard to maintain it will be faster through code
 - AI agent in place easy to use
+- If prompt for agent or tool is wrong. Than process is undeterministic
 
 
 ## How to run 

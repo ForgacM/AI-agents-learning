@@ -1,0 +1,56 @@
+model_list:
+  # ============================================
+  # OLLAMA MODELS (Local)
+  # ============================================
+  - model_name: ollama/qwen3:4b
+    litellm_params:
+      model: ollama/qwen3:4b
+      custom_llm_provider: ollama
+      api_base: http://192.168.1.200:11434
+      merge_reasoning_content_in_choices: true
+      supports_function_calling: true
+
+  # ============================================
+  # ANTHROPIC CLAUDE MODELS
+  # ============================================
+  # Claude 4 Sonnet - Best balance of speed and capability
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+      supports_function_calling: true
+      max_tokens: 8192
+
+  # Claude 4 Opus - Most capable model
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 8192
+
+  # Claude 3.5 Sonnet - Previous generation, still excellent
+  - model_name: claude-3.5-sonnet
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 8192
+
+  # Claude 3.5 Haiku - Fast and affordable
+  - model_name: claude-3.5-haiku
+    litellm_params:
+      model: anthropic/claude-3-5-haiku-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 8192
+
+# General settings
+litellm_settings:
+  set_verbose: false
+  drop_params: true
+  cache: false
+  request_timeout: 300
+  num_retries: 2
+
+# General settings for the proxy
+general_settings:
+  store_prompts_in_spend_logs: true
+  enable_request_logging: true
