@@ -4,8 +4,6 @@
 *.iml
 *.ipr
 
-.venv
-/*/uv.lock
-/*/.env
+**/.venv
+**/uv.lock
 **/.env
-/*/.venv/
