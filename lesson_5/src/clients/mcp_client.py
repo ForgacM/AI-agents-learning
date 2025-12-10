@@ -15,7 +15,7 @@ class MCPClient:
     def __init__(self, server_url: Optional[str] = None):
         # Use environment variable if server_url not provided
         if server_url is None:
-            server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8002/mcp")
+            server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8002")
         self.server_url = server_url.rstrip("/")
         self.session = None
         self._http_cleanup = None

@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(env_path)
 
-from db_server import mcp
+from .db_server import mcp
 
 
 def main():

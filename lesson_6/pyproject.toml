@@ -1,0 +1,15 @@
+[project]
+name = "my-anthropic"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-anthropic>=1.1.0",
+    "langchain>=1.1.0",
+    "langchain-mcp-adapters>=0.1.12",
+    "python-dotenv>=1.1.0",
+    "langgraph>=1.0.2",
+    "python-dotenv>=1.1.0",
+    "pillow>=11.2.1",
+]

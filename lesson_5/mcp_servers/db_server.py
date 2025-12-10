@@ -10,7 +10,6 @@ Usage:
     python run_db_server.py  # HTTP transport on port 8003
 """
 
-import json
 import os
 from datetime import datetime, timedelta
 from typing import Any, Optional
@@ -60,10 +59,11 @@ async def init_db():
                     latitude DECIMAL(10, 6) NOT NULL,
                     longitude DECIMAL(10, 6) NOT NULL,
                     temperature DECIMAL(5, 2) NOT NULL,
-                    weather_data JSON,
+                    weather VARCHAR(255),
+                    weather_date DATE NOT NULL,
                     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 HOUR),
-                    UNIQUE KEY unique_city (city)
+                    UNIQUE KEY unique_city_date (city, weather_date)
                 )
             """)
 
@@ -81,27 +81,32 @@ async def init_db():
 
 
 @mcp.tool()
-async def get_cached_temperature(city: str) -> dict[str, Any]:
+async def get_cached_temperature(city: str, weather_date: str = None) -> dict[str, Any]:
     """
     Get cached temperature for a city from the database.
 
     Args:
         city: Name of the city (e.g., "Bratislava", "Košice")
+        weather_date: Date to check for (YYYY-MM-DD format). Defaults to today.
 
     Returns:
         dict with cached data if found and not expired, or indication that cache miss occurred
     """
     try:
         pool = await get_pool()
+        # Default to today's date if not provided
+        if weather_date is None:
+            weather_date = datetime.now().strftime("%Y-%m-%d")
+
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("""
-                    SELECT city, latitude, longitude, temperature, weather_data,
-                           fetched_at, expires_at,
+                    SELECT city, latitude, longitude, temperature, weather,
+                           weather_date, fetched_at, expires_at,
                            expires_at > NOW() as is_valid
                     FROM temperature_cache
-                    WHERE LOWER(city) = LOWER(%s)
-                """, (city,))
+                    WHERE LOWER(city) = LOWER(%s) AND weather_date = %s
+                """, (city, weather_date))
                 row = await cur.fetchone()
 
                 if row and row['is_valid']:
@@ -112,7 +117,8 @@ async def get_cached_temperature(city: str) -> dict[str, Any]:
                         "latitude": float(row['latitude']),
                         "longitude": float(row['longitude']),
                         "temperature": float(row['temperature']),
-                        "weather_data": json.loads(row['weather_data']) if row['weather_data'] else None,
+                        "weather": row['weather'],
+                        "weather_date": row['weather_date'].isoformat() if row['weather_date'] else None,
                         "fetched_at": row['fetched_at'].isoformat() if row['fetched_at'] else None,
                         "expires_at": row['expires_at'].isoformat() if row['expires_at'] else None,
                     }
@@ -120,14 +126,14 @@ async def get_cached_temperature(city: str) -> dict[str, Any]:
                     return {
                         "found": False,
                         "reason": "cache_expired",
-                        "message": f"Cache for {city} has expired (was valid until {row['expires_at'].isoformat()})",
+                        "message": f"Cache for {city} on {weather_date} has expired (was valid until {row['expires_at'].isoformat()})",
                         "last_temperature": float(row['temperature']),
                     }
                 else:
                     return {
                         "found": False,
                         "reason": "not_in_cache",
-                        "message": f"No cached data for {city}",
+                        "message": f"No cached data for {city} on {weather_date}",
                     }
     except Exception as e:
         return {
@@ -143,7 +149,8 @@ async def store_temperature(
     latitude: float,
     longitude: float,
     temperature: float,
-    weather_data: Optional[dict] = None,
+    weather: str = None,
+    weather_date: str = None,
     cache_hours: int = 1
 ) -> dict[str, Any]:
     """
@@ -154,7 +161,8 @@ async def store_temperature(
         latitude: Latitude of the location
         longitude: Longitude of the location
         temperature: Current temperature in Celsius
-        weather_data: Optional additional weather data as JSON
+        weather: Weather description (e.g., "Sunny", "Cloudy")
+        weather_date: Date of the weather (YYYY-MM-DD format). Defaults to today.
         cache_hours: How long to cache the data (default: 1 hour)
 
     Returns:
@@ -163,18 +171,21 @@ async def store_temperature(
     try:
         pool = await get_pool()
         expires_at = datetime.now() + timedelta(hours=cache_hours)
+        # Default to today's date if not provided
+        if weather_date is None:
+            weather_date = datetime.now().strftime("%Y-%m-%d")
 
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
                     INSERT INTO temperature_cache
-                        (city, latitude, longitude, temperature, weather_data, fetched_at, expires_at)
-                    VALUES (%s, %s, %s, %s, %s, NOW(), %s)
+                        (city, latitude, longitude, temperature, weather, weather_date, fetched_at, expires_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s)
                     ON DUPLICATE KEY UPDATE
                         latitude = VALUES(latitude),
                         longitude = VALUES(longitude),
                         temperature = VALUES(temperature),
-                        weather_data = VALUES(weather_data),
+                        weather = VALUES(weather),
                         fetched_at = NOW(),
                         expires_at = VALUES(expires_at)
                 """, (
@@ -182,15 +193,18 @@ async def store_temperature(
                     latitude,
                     longitude,
                     temperature,
-                    json.dumps(weather_data) if weather_data else None,
+                    weather,
+                    weather_date,
                     expires_at
                 ))
 
                 return {
                     "success": True,
-                    "message": f"Temperature for {city} cached successfully",
+                    "message": f"Temperature for {city} on {weather_date} cached successfully",
                     "city": city,
                     "temperature": temperature,
+                    "weather": weather,
+                    "weather_date": weather_date,
                     "expires_at": expires_at.isoformat(),
                 }
     except Exception as e:
@@ -213,11 +227,11 @@ async def get_all_cached_temperatures() -> dict[str, Any]:
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("""
-                    SELECT city, latitude, longitude, temperature, weather_data,
-                           fetched_at, expires_at,
+                    SELECT city, latitude, longitude, temperature, weather,
+                           weather_date, fetched_at, expires_at,
                            expires_at > NOW() as is_valid
                     FROM temperature_cache
-                    ORDER BY city
+                    ORDER BY city, weather_date
                 """)
                 rows = await cur.fetchall()
 
@@ -228,7 +242,8 @@ async def get_all_cached_temperatures() -> dict[str, Any]:
                         "latitude": float(row['latitude']),
                         "longitude": float(row['longitude']),
                         "temperature": float(row['temperature']),
-                        "weather_data": json.loads(row['weather_data']) if row['weather_data'] else None,
+                        "weather": row['weather'],
+                        "weather_date": row['weather_date'].isoformat() if row['weather_date'] else None,
                         "fetched_at": row['fetched_at'].isoformat() if row['fetched_at'] else None,
                         "expires_at": row['expires_at'].isoformat() if row['expires_at'] else None,
                         "is_valid": bool(row['is_valid']),
